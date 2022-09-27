@@ -45,14 +45,14 @@
   <body>
     <div class="section">
       <div class="container">
-        <h1 class="title">Pesquisa Latam</h1>
-        <p class="subtitle">Pesquisa de preços LATAM</p>
+        <h1 class="title">Latam Price Search</h1>
+        <p class="subtitle">Search multiple dates to find the best prices</p>
 
         <form class="box" id="Formulario">
           <div class="columns">
             <div class="column">
               <div class="field">
-                <label class="label">Partida:</label>
+                <label class="label">Start date:</label>
                 <div class="control">
                   <input name="departure_date" class="input" type="date" />
                 </div>
@@ -61,7 +61,7 @@
             </div>
             <div class="column">
               <div class="field">
-                <label class="label">Origem</label>
+                <label class="label">Departure:</label>
                 <div class="control">
                   <div class="select">
                     <select
@@ -76,7 +76,7 @@
             </div>
             <div class="column">
               <div class="field">
-                <label class="label">Destino</label>
+                <label class="label">Arrival:</label>
                 <div class="control">
                   <div class="select">
                     <select
@@ -95,7 +95,7 @@
               <div class="field is-grouped">
                 <div class="control">
                   <button type="submit" id="Enviar" class="button is-link">
-                    Enviar
+                    Send
                   </button>
                 </div>
                 <div class="control">
@@ -104,7 +104,7 @@
                     class="button is-link is-light"
                     onclick='$(".error").html("");'
                   >
-                    Limpar
+                    Clear
                   </button>
                 </div>
               </div>
