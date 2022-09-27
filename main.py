@@ -1,6 +1,7 @@
 from fastapi import FastAPI, status, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
+from starlette.responses import FileResponse
 
 from airports import load_airports
 from latam import convert_to_matrix, get_all_dates
@@ -18,6 +19,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/")
+async def read_index():
+    return FileResponse('frontend/index.html')
 
 
 @app.get("/{departure_date}/{origin}/{destination}")
