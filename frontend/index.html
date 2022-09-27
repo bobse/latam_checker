@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Latam check</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css"
+    />
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
+  </head>
+  <style>
+    .error {
+      color: red;
+      font-size: 0.8em;
+      margin-top: 4px;
+    }
+    .sticky-col {
+      position: -webkit-sticky;
+      position: sticky;
+      background-color: white;
+      left: 0;
+    }
+    .current_row {
+      background: rgb(255, 191, 0) !important;
+    }
+    .current_cell {
+      background: rgb(255, 128, 0) !important;
+      cursor: pointer;
+    }
+    #results_table {
+      margin-top: -80px;
+    }
+    #best_price {
+      font-size: 1.5em;
+    }
+    #info_travel {
+      margin-left: 50px;
+      background: rgb(255, 191, 0);
+      padding: 10px;
+      display: none;
+    }
+  </style>
+  <body>
+    <div class="section">
+      <div class="container">
+        <h1 class="title">Pesquisa Latam</h1>
+        <p class="subtitle">Pesquisa de preços LATAM</p>
+
+        <form class="box" id="Formulario">
+          <div class="columns">
+            <div class="column">
+              <div class="field">
+                <label class="label">Partida:</label>
+                <div class="control">
+                  <input name="departure_date" class="input" type="date" />
+                </div>
+                <p id="error_departure_date" class="error"></p>
+              </div>
+            </div>
+            <div class="column">
+              <div class="field">
+                <label class="label">Origem</label>
+                <div class="control">
+                  <div class="select">
+                    <select
+                      id="origin"
+                      name="origin_airport"
+                      style="width: 25vw"
+                    ></select>
+                  </div>
+                </div>
+                <p id="error_origin_airport" class="error"></p>
+              </div>
+            </div>
+            <div class="column">
+              <div class="field">
+                <label class="label">Destino</label>
+                <div class="control">
+                  <div class="select">
+                    <select
+                      id="destination"
+                      name="dest_airport"
+                      style="width: 25vw"
+                    ></select>
+                  </div>
+                  <p id="error_dest_airport" class="error"></p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="columns">
+            <div class="column">
+              <div class="field is-grouped">
+                <div class="control">
+                  <button type="submit" id="Enviar" class="button is-link">
+                    Enviar
+                  </button>
+                </div>
+                <div class="control">
+                  <button
+                    type="reset"
+                    class="button is-link is-light"
+                    onclick='$(".error").html("");'
+                  >
+                    Limpar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="section" id="results_table">
+      <div class="container">
+        <p><span id="best_price"></span><span id="info_travel"></span></p>
+      </div>
+      <div class="container">
+        <div class="column" style="font-size: 0.8em">
+          <div class="table-container" style="height: 55vh; overflow: auto">
+            <table class="table is-striped is-narrow is-fullwidth">
+              <tbody id="resultados"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+  <script>
+    const generate_table = (matrix, key_map, best_price) => {
+      table_html =
+        "<thead style='background:white;position: sticky; top: 0; z-index: 1;cursor:pointer'><th class='sticky-col'>&nbsp;</th>";
+      Object.keys(key_map).forEach((key) => {
+        table_html += "<th>" + key_map[key] + "</th>";
+      });
+      table_html += "</thead>";
+
+      matrix.forEach((line, line_idx) => {
+        table_html +=
+          "<tr onmouseover=\"$(this).addClass('current_row');\" onmouseout=\"$(this).removeClass('current_row');\">" +
+          '<td class="sticky-col" style="font-weight:bold;">' +
+          key_map[line_idx] +
+          "</td>";
+
+        line.forEach((item, idx) => {
+          const value = item == 0 ? "" : "$" + item;
+          let best = "";
+          if (item == best_price) {
+            best = "is-selected";
+          }
+
+          table_html +=
+            "<td style='text-align:right;' onmouseover=\"$(this).addClass('current_cell');info_travel('" +
+            key_map[line_idx] +
+            "','" +
+            key_map[idx] +
+            "'," +
+            item +
+            ")\" onmouseout=\"$(this).removeClass('current_cell');clear_info_travel();\" class='" +
+            best +
+            "''>" +
+            value +
+            "</td>";
+        });
+        table_html += "/<tr>";
+      });
+      $("#resultados").html(table_html);
+    };
+    const clear_info_travel = () => {
+      $("#info_travel").html("");
+      $("#info_travel").hide();
+    };
+    const info_travel = (dep, ret, price) => {
+      if (price > 0) {
+        $("#info_travel").show();
+        $("#info_travel").html(
+          "Departure: " + dep + " Return:" + ret + " Price: R$" + price
+        );
+      }
+    };
+    $(document).ready(function () {
+      $.get("http://127.0.0.1:8000/airports", function (data) {
+        var myselect = $("select");
+        myselect.append($("<option></option>").val("-").html("-"));
+        Object.keys(data).forEach(function (key, index) {
+          myselect.append($("<option></option>").val(key).html(data[key]));
+        });
+        $('select option[value="-"]').attr("selected", "selected");
+      });
+
+      document
+        .getElementById("Formulario")
+        .addEventListener("submit", function (event) {
+          event.preventDefault();
+          let data = Array();
+          $(".error").html("");
+          let validation_error = false;
+          $("#Formulario")
+            .serializeArray()
+            .forEach((item, i) => {
+              data.push(item.value);
+              if (item.value == "" || item.value == "-") {
+                $("#" + "error_" + item.name).html("Invalid value");
+                validation_error = true;
+              }
+            });
+
+          if (validation_error == false) {
+            $("#Enviar").addClass("is-loading");
+            $.get(
+              "http://127.0.0.1:8000/" +
+                data[0] +
+                "/" +
+                data[1] +
+                "/" +
+                data[2],
+              function (data) {
+                $("#Enviar").removeClass("is-loading");
+                console.log(data);
+                $("#best_price").html("Best Price: R$" + data["best_price"]);
+                generate_table(
+                  data["flights_matrix"],
+                  data["key_map"],
+                  data["best_price"]
+                );
+              }
+            ).error((e) => {
+              $("#Enviar").removeClass("is-loading");
+              console.log(e);
+            });
+          }
+        });
+    });
+  </script>
+</html>
