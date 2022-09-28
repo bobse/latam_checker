@@ -15,5 +15,5 @@ def load_airports(filename: str = AIRPORTS_FILE) -> Dict:
 		cities = json.load(file)
 	aiports = {city['iata']: f"{city['city']} | {city['name']}" for city in cities
 	           if city['type'] == 'AIRPORT' and (city['countryAlpha2'] == 'BR' or city[
-				'countryAlpha2']=='PT')}
+				'countryAlpha2'] == 'PT')}
 	return aiports

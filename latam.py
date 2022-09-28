@@ -1,11 +1,17 @@
 import itertools
 import json
+import logging
 import time
 from datetime import datetime, timedelta
+from logging.config import dictConfig
 from multiprocessing import Pool
 from typing import List, Dict, Tuple
+from settings import LogConfig
 
 import requests
+
+dictConfig(LogConfig().dict())
+logger = logging.getLogger("app")
 
 
 def _request_json(
@@ -33,7 +39,7 @@ def _request_json(
 
     for attempts in range(num_attemps):
         try:
-            # print(f"{departure_date} -> {return_date}")
+            logger.info(f"{departure_date} -> {return_date}")
             page = requests.get(url, headers=headers, timeout=15)
             page.raise_for_status()
 
@@ -49,21 +55,21 @@ def _request_json(
             requests.exceptions.Timeout,
             requests.exceptions.ConnectionError,
         ) as err:
-            print(f"Error: {err}")
-            print(f"Trying it again in {str(attempts * 2)} seconds")
+            logger.error(f"Error: {err}")
+            logger.warning(f"Trying it again in {str(attempts * 2)} seconds")
             time.sleep(attempts * 2)
             continue
 
         except requests.exceptions.HTTPError as e:
             code = e.response.status_code
-            print(f"Error: {e} | code: {code}")
+            logger.error(f"Error: {e} | code: {code}")
             if code in [429, 500, 502, 503, 504]:
                 # retry after n seconds
                 time.sleep(attempts * 2)
                 continue
 
         except Exception as e:
-            print(f"Error: {e}")
+            logger.error(f"Error: {e}")
             break
 
         return {}
@@ -123,7 +129,7 @@ def get_all_dates(
     best_price = results[0][1]
     list_of_responses = []
     for item in results:
-        if item[1] < best_price:
+        if item[1] is not None and item[1] < best_price:
             best_price = item[1]
         list_of_responses.append(item[0])
 

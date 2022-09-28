@@ -43,6 +43,10 @@
     }
   </style>
   <body>
+    <div id="notification" class="notification is-danger">
+      <button class="delete"></button>
+      <div id="notification_text"></div>
+    </div>
     <div class="section">
       <div class="container">
         <h1 class="title">Latam Price Search</h1>
@@ -100,9 +104,9 @@
                 </div>
                 <div class="control">
                   <button
+                    id="reset"
                     type="reset"
                     class="button is-link is-light"
-                    onclick='$(".error").html("");'
                   >
                     Clear
                   </button>
@@ -182,6 +186,7 @@
       }
     };
     $(document).ready(function () {
+      $("#notification").hide();
       $.get("http://127.0.0.1:8000/airports", function (data) {
         var myselect = $("select");
         myselect.append($("<option></option>").val("-").html("-"));
@@ -189,6 +194,15 @@
           myselect.append($("<option></option>").val(key).html(data[key]));
         });
         $('select option[value="-"]').attr("selected", "selected");
+      });
+      $("#reset").click(() => {
+        $(".error").html("");
+        $("#notification").hide();
+        $("#results_table").hide();
+      });
+
+      $("#notification").click(() => {
+        $("#notification").hide();
       });
 
       document
@@ -219,7 +233,7 @@
                 data[2],
               function (data) {
                 $("#Enviar").removeClass("is-loading");
-                console.log(data);
+                // console.log(data);
                 $("#best_price").html("Best Price: R$" + data["best_price"]);
                 generate_table(
                   data["flights_matrix"],
@@ -229,7 +243,17 @@
               }
             ).error((e) => {
               $("#Enviar").removeClass("is-loading");
-              console.log(e);
+              // console.log(e);
+              $("#notification_text").html(
+                "Sorry, some error occured while requesting your dates!"
+              );
+              if (e["responseText"] !== undefined) {
+                const response = JSON.parse(e["responseText"]);
+                if (response["detail"] !== undefined) {
+                  $("#notification_text").html(response["detail"]);
+                }
+              }
+              $("#notification").show();
             });
           }
         });

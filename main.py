@@ -1,3 +1,7 @@
+import logging
+from logging.config import dictConfig
+
+import uvicorn
 from fastapi import FastAPI, status, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
@@ -5,12 +9,16 @@ from starlette.responses import FileResponse
 
 from airports import load_airports
 from latam import convert_to_matrix, get_all_dates
-from settings import ORIGINS
+from settings import ORIGINS, LogConfig
 from validators import FlightValidator
+
+dictConfig(LogConfig().dict())
+logger = logging.getLogger("app")
 
 AIRPORTS = load_airports()
 
 app = FastAPI()
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -40,14 +48,17 @@ def get_flights(departure_date: str, origin: str, destination: str):
     try:
         flights, best_price = get_all_dates(departure_date, origin, destination)
     except Exception as e:
+        logging.error(e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Could not get the results. Please try again",
         )
-    # for testing
-    # best_price = 1770.8
-    # with open("./response.json", "r") as file:
-    #     flights = json.load(file)
+
+    if best_price is None:
+        raise HTTPException(
+                status_code = status.HTTP_404_NOT_FOUND,
+                detail = "Could not get flights for this destination and date",
+        )
     key_map, matrix = convert_to_matrix(flights)
     return {"flights_matrix": matrix, "key_map": key_map, "best_price": best_price}
 
@@ -55,3 +66,7 @@ def get_flights(departure_date: str, origin: str, destination: str):
 @app.get("/airports")
 def get_airports():
     return AIRPORTS
+
+
+if __name__ == '__main__':
+    uvicorn.run(app, host = "0.0.0.0", port = 8000)
