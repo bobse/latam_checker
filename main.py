@@ -15,7 +15,6 @@ from validators import FlightValidator
 dictConfig(LogConfig().dict())
 logger = logging.getLogger("app")
 
-AIRPORTS = load_airports()
 
 app = FastAPI()
 
@@ -65,6 +64,12 @@ def get_flights(departure_date: str, origin: str, destination: str):
 
 @app.get("/airports")
 def get_airports():
+    AIRPORTS = load_airports()
+    if len(AIRPORTS) == 0:
+        raise HTTPException(
+                status_code = status.HTTP_404_NOT_FOUND,
+                detail = "Could not load the airport list",
+        )
     return AIRPORTS
 
 

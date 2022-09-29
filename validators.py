@@ -12,7 +12,7 @@ class FlightValidator(BaseModel):
 
     @validator('departure_date')
     def more_than_today(cls, v):
-        if v < date.today():
+        if v <= date.today():
             raise ValueError('Departure must be today or more.')
         return v
 

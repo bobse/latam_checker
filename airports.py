@@ -6,14 +6,18 @@ BASE_PATH = Path(__file__).resolve().parent
 AIRPORTS_FILE = f"{BASE_PATH}/airports.json"
 
 
-def load_airports(filename: str = AIRPORTS_FILE) -> Dict:
+def load_airports(filename: str = AIRPORTS_FILE) -> Dict[str,str]:
 	"""
 	Loads iata airport codes for the flights
 	:return: Dict -> {Iata Code:City Name | Airport Name}
 	"""
-	with open(filename, 'r') as file:
-		cities = json.load(file)
-	aiports = {city['iata']: f"{city['city']} | {city['name']}" for city in cities
-	           if city['type'] == 'AIRPORT' and (city['countryAlpha2'] == 'BR' or city[
-				'countryAlpha2'] == 'PT')}
+	try:
+		with open(filename, 'r') as file:
+			cities = json.load(file)
+		aiports = {city['iata']: f"{city['city']} | {city['name']}" for city in cities
+		           if city['type'] == 'AIRPORT' and (city['countryAlpha2'] == 'BR' or city[
+					'countryAlpha2'] == 'PT')}
+	except FileNotFoundError:
+		return []
+
 	return aiports
