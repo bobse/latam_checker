@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from starlette.responses import FileResponse
 
 from airports import load_airports
-from latam import convert_to_matrix, get_all_dates
+from latam import LatamFinder
 from settings import ORIGINS, LogConfig
 from validators import FlightValidator
 
@@ -45,21 +45,22 @@ def get_flights(departure_date: str, origin: str, destination: str):
                 detail = e.errors().__str__(),
         )
     try:
-        flights, best_price = get_all_dates(departure_date, origin, destination)
+        latam = LatamFinder(departure_date, origin, destination)
+        latam.get_all_flights()
     except Exception as e:
         logging.error(e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Could not get the results. Please try again",
+            detail="Could not get the results. Please try again later",
         )
 
-    if best_price is None:
+    if latam.best_price == float("inf"):
         raise HTTPException(
                 status_code = status.HTTP_404_NOT_FOUND,
                 detail = "Could not get flights for this destination and date",
         )
-    key_map, matrix = convert_to_matrix(flights)
-    return {"flights_matrix": matrix, "key_map": key_map, "best_price": best_price}
+
+    return {"flights": latam.all_flights, "best_price": latam.best_price}
 
 
 @app.get("/airports")
