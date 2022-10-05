@@ -17,7 +17,13 @@ class FlightValidator(BaseModel):
         return v
 
     @validator('origin', 'destination')
-    def check_airports(cls, v, values, field):
+    def check_airports_on_db(cls, v, values, field):
         if load_airports().get(v) is None:
             raise ValueError(f'{field.name.upper()} not found.')
+        return v
+
+    @validator('destination')
+    def check_airports_not_equal(cls, v, values, field):
+        if v == values['origin']:
+            raise ValueError(f'Origin and destination airports must be diferent')
         return v

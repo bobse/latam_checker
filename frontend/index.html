@@ -200,14 +200,18 @@
               }
             ).error((e) => {
               $("#Enviar").removeClass("is-loading");
-              // console.log(e);
+              console.log(e);
               $("#notification_text").html(
                 "Sorry, some error occured while requesting your dates!"
               );
               if (e["responseText"] !== undefined) {
                 const response = JSON.parse(e["responseText"]);
                 if (response["detail"] !== undefined) {
-                  $("#notification_text").html(response["detail"]);
+                  text_msg = "";
+                  response["detail"].forEach((itemError) => {
+                    text_msg += itemError["msg"] + "<br>";
+                  });
+                  $("#notification_text").html(text_msg);
                 }
               }
               $("#notification").show();
