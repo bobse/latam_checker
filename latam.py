@@ -36,7 +36,7 @@ class TicketFinder(ABC):
 
     def _save_departure_date(self, departure_date: str) -> None:
         departure_date = self._convert_str_to_date(departure_date)
-        if departure_date < datetime.now():
+        if departure_date.date() < datetime.now().date():
             LOGGER.error("Invalid date in search. Date is smaller than current date.")
             raise ValueError("Date must be bigger than the current date")
         else:
@@ -44,12 +44,7 @@ class TicketFinder(ABC):
 
     @staticmethod
     def _convert_str_to_date(departure_date: str) -> datetime.date:
-        try:
-            return datetime.strptime(departure_date, "%Y-%m-%d")
-        except ValueError:
-            LOGGER.error(
-                "Invalid str/date format. Please provide the following format: YYYY-MM-DD"
-            )
+        return datetime.strptime(departure_date, "%Y-%m-%d")
 
     @abstractmethod
     def _generate_travel_dates(self) -> None:
@@ -92,9 +87,11 @@ class TicketFinder(ABC):
                 requests.exceptions.ConnectionError,
                 requests.exceptions.HTTPError,
             ) as error:
-                code = error.response.status_code
+                code = None
+                if error == requests.exceptions.HTTPError:
+                    code = error.response.status_code
+                    LOGGER.error(f"Http error code: {code}")
 
-                LOGGER.error(f"Error: {error} | code: {code}")
                 LOGGER.warning(
                     f"Could not get the url. Trying it again in {str(attempts * 2)} "
                     f"seconds"
@@ -169,14 +166,17 @@ class LatamFinder(TicketFinder):
         return_date_str = return_date.strftime("%Y-%m-%d")
 
         LOGGER.debug(f"{departure_date_str} -> {return_date_str}")
-        url = f"http://bff.latam.com/ws/proxy/booking-webapp-bff/v1/public/revenue" \
-              f"/bestprices/roundtrip?departure={departure_date_str}&origin={self.origin}" \
-              f"&destination={self.destination}&cabin=Y&country=BR&language=PT&home=pt_br" \
-              f"&return={return_date_str}&adult=1&promoCode="
+        url = self._generate_complete_url(departure_date_str, return_date_str)
         response = self._request_url(url)
         if response:
             flight = self._reformat_latam_response(response)
             return flight
+
+    def _generate_complete_url(self, departure_date_str, return_date_str):
+        return f"http://bff.latam.com/ws/proxy/booking-webapp-bff/v1/public/revenue" \
+              f"/bestprices/roundtrip?departure={departure_date_str}&origin={self.origin}" \
+              f"&destination={self.destination}&cabin=Y&country=BR&language=PT&home=pt_br" \
+              f"&return={return_date_str}&adult=1&promoCode="
 
     @staticmethod
     def _reformat_latam_response(api_response: dict) -> dict:

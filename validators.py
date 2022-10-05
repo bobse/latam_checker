@@ -24,6 +24,6 @@ class FlightValidator(BaseModel):
 
     @validator('destination')
     def check_airports_not_equal(cls, v, values, field):
-        if v == values['origin']:
+        if v == values.get('origin'):
             raise ValueError(f'Origin and destination airports must be diferent')
         return v
