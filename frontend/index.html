@@ -148,7 +148,7 @@
     };
     $(document).ready(function () {
       $("#notification").hide();
-      $.get("http://127.0.0.1:8000/airports", function (data) {
+      $.get("/airports", function (data) {
         var myselect = $("select");
         myselect.append($("<option></option>").val("-").html("-"));
         Object.keys(data).forEach(function (key, index) {
@@ -186,7 +186,6 @@
           if (validation_error == false) {
             $("#Enviar").addClass("is-loading");
             $.get(
-              "http://127.0.0.1:8000/" +
                 data[0] +
                 "/" +
                 data[1] +
@@ -208,9 +207,16 @@
                 const response = JSON.parse(e["responseText"]);
                 if (response["detail"] !== undefined) {
                   text_msg = "";
-                  response["detail"].forEach((itemError) => {
-                    text_msg += itemError["msg"] + "<br>";
-                  });
+                  if (typeof response["detail"] === 'string' || response["detail"] instanceof
+                  String){
+                    text_msg += response["detail"];
+                  }
+                  else{
+                     response["detail"].forEach((itemError) => {
+                        text_msg += itemError["msg"] + "<br>";
+                     });
+                  }
+
                   $("#notification_text").html(text_msg);
                 }
               }
