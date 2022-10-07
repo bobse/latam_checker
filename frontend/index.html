@@ -134,7 +134,7 @@
     </div>
   </body>
   <script>
-    const clear_info_travel = () => {
+    const clear_info_curr_travel = () => {
       $("#info_travel").html("");
       $("#info_travel").hide();
     };
@@ -255,7 +255,7 @@
                   return_date +
                   "'," +
                   flights[key][return_date] +
-                  ")\" onmouseout=\"$(this).removeClass('current_cell');clear_info_travel();\" class='" +
+                  ")\" onmouseout=\"$(this).removeClass('current_cell');clear_info_curr_travel();\" class='" +
                   best +
                   "''>" +
                   value +
