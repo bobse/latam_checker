@@ -11,7 +11,7 @@ from starlette.responses import FileResponse
 from airports import load_airports
 from latam import LatamFinder
 from settings import ORIGINS, LogConfig
-from validators import FlightValidator
+from validators import FlightData
 
 dictConfig(LogConfig().dict())
 logger = logging.getLogger("app")
@@ -37,7 +37,7 @@ async def read_index():
 @app.get("/{departure_date}/{origin}/{destination}")
 def get_flights(departure_date: str, origin: str, destination: str):
     try:
-        FlightValidator(
+        FlightData(
                 **locals()
         )
     except ValidationError as e:

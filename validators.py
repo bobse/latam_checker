@@ -1,20 +1,14 @@
 from datetime import date
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validator, constr, condate
 
 from airports import load_airports
 
 
-class FlightValidator(BaseModel):
-    departure_date: date
-    origin: str
-    destination: str
-
-    @validator('departure_date')
-    def more_than_today(cls, v):
-        if v <= date.today():
-            raise ValueError('Departure must be today or more.')
-        return v
+class FlightData(BaseModel):
+    departure_date: condate(ge=date.today())
+    origin: constr(to_upper=True)
+    destination: constr(to_upper=True)
 
     @validator('origin', 'destination')
     def check_airports_on_db(cls, v, values, field):
