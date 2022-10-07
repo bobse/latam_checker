@@ -9,13 +9,17 @@ from datetime import datetime, timedelta
 from logging.config import dictConfig
 from multiprocessing import Pool
 
+from pydantic import ValidationError
+
+from validators import FlightData
+
 import requests
 
 from settings import LogConfig
 
 
 dictConfig(LogConfig().dict())
-LOGGER = logging.getLogger("app.latam")
+LOGGER = logging.getLogger("app.scraper")
 
 
 class TicketFinder(ABC):
@@ -23,28 +27,16 @@ class TicketFinder(ABC):
     Interface for ticket finder
     Must always define url when creating a subclass
     """
-    number_of_total_searches = 3
+    _number_of_total_searches = 3
 
     @abstractmethod
-    def __init__(self, departure_date: str, origin: str, destination: str):
-        self._save_departure_date(departure_date)
-        self.origin = origin
-        self.destination = destination
+    def __init__(self, flight: FlightData):
+        self._origin = flight.origin
+        self._destination = flight.destination
+        self._departure_date = flight.departure_date
         self._generate_travel_dates()
-        self.best_price = float('inf')
-        self.all_flights = {}
-
-    def _save_departure_date(self, departure_date: str) -> None:
-        departure_date = self._convert_str_to_date(departure_date)
-        if departure_date.date() < datetime.now().date():
-            LOGGER.error("Invalid date in search. Date is smaller than current date.")
-            raise ValueError("Date must be bigger than the current date")
-        else:
-            self.departure_date = departure_date
-
-    @staticmethod
-    def _convert_str_to_date(departure_date: str) -> datetime.date:
-        return datetime.strptime(departure_date, "%Y-%m-%d")
+        self._best_price = float('inf')
+        self._all_flights = {}
 
     @abstractmethod
     def _generate_travel_dates(self) -> None:
@@ -88,21 +80,20 @@ class TicketFinder(ABC):
                 requests.exceptions.HTTPError,
             ) as error:
                 code = None
-                if error == requests.exceptions.HTTPError:
-                    code = error.response.status_code
+                if type(error) == requests.exceptions.HTTPError:
+                    code = response.status_code
                     LOGGER.error(f"Http error code: {code}")
 
                 LOGGER.warning(
                     f"Could not get the url. Trying it again in {str(attempts * 2)} "
                     f"seconds"
                 )
-                time.sleep(attempts * 2)
-                continue
 
             except Exception as error:
                 LOGGER.error(f"Error: {error}")
                 LOGGER.error(f"Canceling requesting {url}")
                 break
+            time.sleep(attempts * 2)
 
         return None
 
@@ -117,8 +108,8 @@ class TicketFinder(ABC):
 
 
 class LatamFinder(TicketFinder):
-    def __init__(self, departure_date: str, origin: str, destination: str):
-        super().__init__(departure_date, origin, destination)
+    def __init__(self, flight: FlightData):
+        super().__init__(flight)
 
     def _generate_travel_dates(self) -> None:
         """
@@ -126,36 +117,40 @@ class LatamFinder(TicketFinder):
             Latam: We search using multiple of 7 due to original response format
             total travel dates = 2 * number_of_total_searches
         """
-        all_dates = [self.departure_date + timedelta(days = 7 * x) for x in range(0, self.number_of_total_searches)]
+        all_dates = [self._departure_date + timedelta(days = 7 * x) for x in range(0, self._number_of_total_searches)]
         trips_combinations = tuple(i for i in itertools.combinations_with_replacement(all_dates, 2))
-        self.all_travel_dates = trips_combinations
+        self._all_travel_dates = trips_combinations
 
     def get_all_flights(self):
         """
             Retrieves all possible flights and prices concurrently and saves to instance
             variable all_flights.
             Saves in the instance the all_flights and best_price
-
+            :return: Tuple (best_price, all_flights)
         """
 
         with Pool(processes = 16) as pool:
-            list_of_responses = pool.starmap(self._get_one_flight, self.all_travel_dates)
+            list_of_responses = pool.starmap(self._get_one_flight, self._all_travel_dates)
 
-        list_of_all_departure_dates = []
+        list_of_all_return_dates = set()
         for response in list_of_responses:
             if response.get('best_price') is not None:
-                if response['best_price'] < self.best_price:
-                    self.best_price = response['best_price']
+                if response['best_price'] < self._best_price:
+                    self._best_price = response['best_price']
 
                 for departure_date in response['flights'].keys():
-                    list_of_all_departure_dates.append(departure_date)
-                    if self.all_flights.get(departure_date):
-                        self.all_flights[departure_date].update(response['flights'][departure_date])
+                    list_of_all_return_dates.add(departure_date)
+                    if self._all_flights.get(departure_date):
+                        self._all_flights[departure_date].update(response['flights'][departure_date])
                     else:
-                        self.all_flights[departure_date] = {arrival_date: 0 for arrival_date in list_of_all_departure_dates}
-                        self.all_flights[departure_date].update(response['flights'][departure_date])
+                        self._all_flights[departure_date] = {arrival_date: 0 for arrival_date in
+                                                             list_of_all_return_dates}
+                        self._all_flights[departure_date].update(response['flights'][departure_date])
 
-    def _get_one_flight(self, departure_date: datetime, return_date: datetime) -> dict | None:
+        return_best_price = self._best_price if self._best_price != float("inf") else None
+        return return_best_price, self._all_flights
+
+    def _get_one_flight(self, departure_date: datetime.date, return_date: datetime.date) -> dict | None:
         """
             Returns a formated response from a single latam request
             ** This request returns multiple dates due to the api in latam.
@@ -171,11 +166,13 @@ class LatamFinder(TicketFinder):
         if response:
             flight = self._reformat_latam_response(response)
             return flight
+        else:
+            return {}
 
     def _generate_complete_url(self, departure_date_str, return_date_str):
         return f"http://bff.latam.com/ws/proxy/booking-webapp-bff/v1/public/revenue" \
-              f"/bestprices/roundtrip?departure={departure_date_str}&origin={self.origin}" \
-              f"&destination={self.destination}&cabin=Y&country=BR&language=PT&home=pt_br" \
+              f"/bestprices/roundtrip?departure={departure_date_str}&origin={self._origin}" \
+              f"&destination={self._destination}&cabin=Y&country=BR&language=PT&home=pt_br" \
               f"&return={return_date_str}&adult=1&promoCode="
 
     @staticmethod
@@ -201,6 +198,11 @@ class LatamFinder(TicketFinder):
 
 
 if __name__ == "__main__":
-    latam = LatamFinder("2022-12-01", "VIX", "CGH")
-    latam.get_all_flights()
-    print(latam.all_flights)
+    try:
+        my_flight = FlightData(departure_date="2022-12-01", origin="CGH", destination="VIX")
+        latam = LatamFinder(my_flight)
+        best_price, all_flights = latam.get_all_flights()
+        print(all_flights)
+    except ValidationError as e:
+        print(e.json())
+

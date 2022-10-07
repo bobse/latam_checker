@@ -185,19 +185,12 @@
 
           if (validation_error == false) {
             $("#Enviar").addClass("is-loading");
-            $.get(
-                data[0] +
-                "/" +
-                data[1] +
-                "/" +
-                data[2],
-              function (data) {
-                $("#Enviar").removeClass("is-loading");
-                // console.log(data);
-                $("#best_price").html("Best Price: R$" + data["best_price"]);
-                generate_table(data["flights"], data["best_price"]);
-              }
-            ).error((e) => {
+            $.get(data[0] + "/" + data[1] + "/" + data[2], function (data) {
+              $("#Enviar").removeClass("is-loading");
+              // console.log(data);
+              $("#best_price").html("Best Price: R$" + data["best_price"]);
+              generate_table(data["flights"], data["best_price"]);
+            }).error((e) => {
               $("#Enviar").removeClass("is-loading");
               console.log(e);
               $("#notification_text").html(
@@ -207,14 +200,15 @@
                 const response = JSON.parse(e["responseText"]);
                 if (response["detail"] !== undefined) {
                   text_msg = "";
-                  if (typeof response["detail"] === 'string' || response["detail"] instanceof
-                  String){
+                  if (
+                    typeof response["detail"] === "string" ||
+                    response["detail"] instanceof String
+                  ) {
                     text_msg += response["detail"];
-                  }
-                  else{
-                     response["detail"].forEach((itemError) => {
-                        text_msg += itemError["msg"] + "<br>";
-                     });
+                  } else {
+                    response["detail"].forEach((itemError) => {
+                      text_msg += itemError["msg"] + "<br>";
+                    });
                   }
 
                   $("#notification_text").html(text_msg);
@@ -224,11 +218,14 @@
             });
           }
           const generate_table = (flights, best_price) => {
+            console.log(flights.lenght);
             table_html =
               "<thead style='background:white;position: sticky; top: 0; z-index: 1;cursor:pointer'><th class='sticky-col'>&nbsp;</th>";
-            Object.keys(flights).forEach((key) => {
-              table_html += "<th>" + key + "</th>";
-            });
+            Object.keys(flights)
+              .sort()
+              .forEach((key) => {
+                table_html += "<th>" + key + "</th>";
+              });
             table_html += "</thead>";
 
             Object.keys(flights).forEach((key) => {
@@ -238,29 +235,31 @@
                 key +
                 "</td>";
 
-              Object.keys(flights[key]).forEach((return_date) => {
-                const value =
-                  flights[key][return_date] == 0
-                    ? ""
-                    : "$" + flights[key][return_date];
-                let best = "";
-                if (flights[key][return_date] == best_price) {
-                  best = "is-selected";
-                }
+              Object.keys(flights[key])
+                .sort()
+                .forEach((return_date) => {
+                  const value =
+                    flights[key][return_date] == 0
+                      ? "-"
+                      : "$" + flights[key][return_date];
+                  let best = "";
+                  if (flights[key][return_date] == best_price) {
+                    best = "is-selected";
+                  }
 
-                table_html +=
-                  "<td style='text-align:right;' onmouseover=\"$(this).addClass('current_cell');info_travel('" +
-                  key +
-                  "','" +
-                  return_date +
-                  "'," +
-                  flights[key][return_date] +
-                  ")\" onmouseout=\"$(this).removeClass('current_cell');clear_info_curr_travel();\" class='" +
-                  best +
-                  "''>" +
-                  value +
-                  "</td>";
-              });
+                  table_html +=
+                    "<td style='text-align:right;' onmouseover=\"$(this).addClass('current_cell');info_travel('" +
+                    key +
+                    "','" +
+                    return_date +
+                    "'," +
+                    flights[key][return_date] +
+                    ")\" onmouseout=\"$(this).removeClass('current_cell');clear_info_curr_travel();\" class='" +
+                    best +
+                    "''>" +
+                    value +
+                    "</td>";
+                });
               table_html += "/<tr>";
             });
             $("#resultados").html(table_html);

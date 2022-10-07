@@ -427,23 +427,24 @@ class TestFlights(TestCase):
         }
 
     def test_get_flights_200(self):
-        with mock.patch("main.LatamFinder") as mock_latam:
-            mock_latam.return_value.all_flights = self.flights_response
-            mock_latam.return_value.best_price = 0
+        with mock.patch("main.LatamFinder.get_all_flights") as mock_latam:
+            mock_best_price = 0
+            mock_latam.return_value = mock_best_price, self.flights_response
             response = self.client.get(
                 f"/{self.departure_date}/{self.origin}/{self.destination}"
             )
             self.assertEqual(status.HTTP_200_OK, response.status_code)
             self.assertEqual(
-                mock_latam.return_value.best_price, response.json()["best_price"]
+                mock_best_price, response.json()["best_price"]
             )
             self.assertEqual(
-                mock_latam.return_value.all_flights, response.json()["flights"]
+                self.flights_response, response.json()["flights"]
             )
 
     def test_no_best_price_404(self):
-        with mock.patch("main.LatamFinder") as mock_latam:
-            mock_latam.return_value.best_price = float("inf")
+        with mock.patch("main.LatamFinder.get_all_flights") as mock_latam:
+            mock_best_price = None
+            mock_latam.return_value = mock_best_price, {}
             response = self.client.get(
                 f"/{self.departure_date}/{self.origin}/{self.destination}"
             )
@@ -453,6 +454,7 @@ class TestFlights(TestCase):
         with mock.patch("main.LatamFinder") as mock_latam:
             response = self.client.get(f"/2000-01-01/{self.origin}/{self.destination}")
             self.assertEqual(status.HTTP_400_BAD_REQUEST, response.status_code)
+            self.assertIn('departure_date', response.json()['detail'][0]['loc'])
 
     def test_same_airport_400(self):
         with mock.patch("main.LatamFinder") as mock_latam:
@@ -460,6 +462,7 @@ class TestFlights(TestCase):
                 f"/{self.departure_date}/{self.origin}/{self.origin}"
             )
             self.assertEqual(status.HTTP_400_BAD_REQUEST, response.status_code)
+            self.assertIn('destination', response.json()['detail'][0]['loc'])
 
     def test_airport_not_in_database_400(self):
         with mock.patch("main.LatamFinder") as mock_latam:
