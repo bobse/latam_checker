@@ -31,7 +31,7 @@ app.add_middleware(
 
 @app.get("/")
 async def read_index():
-    return FileResponse('frontend/index.html')
+    return FileResponse("frontend/index.html")
 
 
 @app.get("/{departure_date}/{origin}/{destination}")
@@ -42,10 +42,7 @@ def get_flights(departure_date: str, origin: str, destination: str):
         best_price, all_flights = latam.get_all_flights()
     except ValidationError as e:
         error_msg = json.loads(e.json())
-        raise HTTPException(
-                status_code = status.HTTP_400_BAD_REQUEST,
-                detail = error_msg
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
     except Exception as e:
         logging.error(e)
         raise HTTPException(
@@ -55,8 +52,8 @@ def get_flights(departure_date: str, origin: str, destination: str):
 
     if best_price is None:
         raise HTTPException(
-                status_code = status.HTTP_404_NOT_FOUND,
-                detail = "Could not get flights for this destination or date",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Could not get flights for this destination or date",
         )
 
     return {"flights": all_flights, "best_price": best_price}
@@ -67,11 +64,11 @@ def get_airports():
     AIRPORTS = load_airports()
     if len(AIRPORTS) == 0:
         raise HTTPException(
-                status_code = status.HTTP_404_NOT_FOUND,
-                detail = "Could not load the airport list",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Could not load the airport list",
         )
     return AIRPORTS
 
 
-if __name__ == '__main__':
-    uvicorn.run(app, host = "0.0.0.0", port = 8000)
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
